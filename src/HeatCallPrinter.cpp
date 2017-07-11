@@ -163,18 +163,18 @@ struct DOTGraphTraits<HeatCallGraphInfo *> : public DefaultDOTGraphTraits {
 
 namespace {
 
-void HeatCallPrinterPass::getAnalysisUsage(AnalysisUsage &AU) const {
+void HeatCallGraphDOTPrinterPass::getAnalysisUsage(AnalysisUsage &AU) const {
   ModulePass::getAnalysisUsage(AU);
   AU.addRequired<BlockFrequencyInfoWrapperPass>();
   AU.setPreservesAll();
 }
 
-bool HeatCallPrinterPass::runOnModule(Module &M) {
+bool HeatCallGraphDOTPrinterPass::runOnModule(Module &M) {
   auto LookupBFI = [this](Function &F) {
     return &this->getAnalysis<BlockFrequencyInfoWrapperPass>(F).getBFI();
   };
 
-  std::string Filename = (std::string(M.getModuleIdentifier()) + ".callgraph.dot");
+  std::string Filename = (std::string(M.getModuleIdentifier()) + ".heatcallgraph.dot");
   errs() << "Writing '" << Filename << "'...";
 
   std::error_code EC;
@@ -194,6 +194,6 @@ bool HeatCallPrinterPass::runOnModule(Module &M) {
 
 }
 
-char HeatCallPrinterPass::ID = 0;
-static RegisterPass<HeatCallPrinterPass> X("dot-heat-callgraph",
+char HeatCallGraphDOTPrinterPass::ID = 0;
+static RegisterPass<HeatCallGraphDOTPrinterPass> X("dot-heat-callgraph",
                       "Print heat map of call graph to 'dot' file.", false, false);

@@ -27,10 +27,10 @@ using namespace llvm;
 
 namespace {
 
-class HeatCallPrinterPass : public ModulePass {
+class HeatCallGraphDOTPrinterPass : public ModulePass {
 public:
   static char ID;
-  HeatCallPrinterPass() : ModulePass(ID) {}
+  HeatCallGraphDOTPrinterPass() : ModulePass(ID) {}
 
   void getAnalysisUsage(AnalysisUsage &AU) const;
   bool runOnModule(Module &M) override;

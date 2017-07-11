@@ -264,7 +264,7 @@ static uint64_t getMaxFreq(Module &M, function_ref<BlockFrequencyInfo *(Function
 }
 
 static void writeHeatCFGToDotFile(Function &F, BlockFrequencyInfo *BFI, uint64_t maxFreq, bool isSimple) {
-  std::string Filename = ("cfg." + F.getName() + ".dot").str();
+  std::string Filename = ("heatcfg." + F.getName() + ".dot").str();
   errs() << "Writing '" << Filename << "'...";
 
   std::error_code EC;
