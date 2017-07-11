@@ -7,8 +7,8 @@
 Generates the heat map of the CFG (control-flow graph) based on the basic block frequency.
 The output may include (or not) the LLVM code for each basic block.
 
-<img src="https://github.com/rcorcs/llvm-heat-printer/raw/master/images/heat-cfg.png" width="160">
-<img src="https://github.com/rcorcs/llvm-heat-printer/raw/master/images/heat-cfg-only.png" width="160">
+<img src="https://github.com/rcorcs/llvm-heat-printer/raw/master/images/heat-cfg.png" width="160" style="float:left;">
+<img src="https://github.com/rcorcs/llvm-heat-printer/raw/master/images/heat-cfg-only.png" width="160" style="float:right;">
 
 The user can also choose between a intra-function or inter-function maximum frequency reference.
 For the intra-function heat map, activated with the flag '-heat-cfg-per-function', the heat scale will consider
