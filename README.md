@@ -7,14 +7,11 @@
 Generates the heat map of the CFG (control-flow graph) based on the basic block frequency.
 The output may include (or not) the LLVM code for each basic block.
 
-<center>
-
+<p align="center">
 | <img src="https://github.com/rcorcs/llvm-heat-printer/raw/master/images/heat-cfg.png" width="250"> |
   <img src="https://github.com/rcorcs/llvm-heat-printer/raw/master/images/heat-cfg-only.png" width="250"> |
 |:---:|---|
-
-</center>
-
+</p>
 
 The user can also choose between a intra-function or inter-function maximum frequency reference.
 For the intra-function heat map, activated with the flag '-heat-cfg-per-function', the heat scale will consider
@@ -29,4 +26,7 @@ With the inter-function heat map, the CFGs for some functions can be completely 
 Generates the heat map of the call-graph based on either the profiled number of calls or the maximum basic block frequency inside each function.
 The following figure illustrates the heat call-graph highlighting the maximum basic block frequency inside each function.
 
-<img src="https://github.com/rcorcs/llvm-heat-printer/raw/master/images/heat-callgraph.png" width="512">
+<p align="center">
+| <img src="https://github.com/rcorcs/llvm-heat-printer/raw/master/images/heat-callgraph.png" width="512"> |
+|:---:|
+</p>
