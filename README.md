@@ -1,7 +1,7 @@
 # LLVM Heat Printer
 
 LLVM Heat Printer provides visualization assistance for profiling.
-It implements analysis passes that generates visualization (dot) files that depicts the (profiled) execution frequency of a piece of code using a cool/warm color map.
+It implements analysis passes that generate visualization (dot) files that depict the (profiled) execution frequency of a piece of code using a cool/warm color map.
 
 Cool/Warm color map:
 ![CoolWarm Map](https://github.com/rcorcs/llvm-heat-printer/raw/master/images/coolwarm.png)
