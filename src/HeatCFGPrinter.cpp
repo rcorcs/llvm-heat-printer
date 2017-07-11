@@ -25,6 +25,8 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Pass.h"
+#include "llvm/Support/DOTGraphTraits.h"
+#include "llvm/Support/GraphWriter.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
@@ -38,7 +40,6 @@
 using namespace llvm;
 
 
-
 static cl::opt<bool>
 HeatCFGPerFunction("heat-cfg-per-function", cl::init(false), cl::Hidden,
                    cl::desc("Heat CFG per function"));
@@ -49,18 +50,18 @@ class HeatCFGInfo {
 private:
    BlockFrequencyInfo *BFI;
    Function *F;
-   uint64_t totalMaxFreq;
+   uint64_t maxFreq;
 
 public:
-   HeatCFGInfo(Function *F, BlockFrequencyInfo *BFI,uint64_t totalMaxFreq){
+   HeatCFGInfo(Function *F, BlockFrequencyInfo *BFI, uint64_t maxFreq){
       this->BFI = BFI;
       this->F = F;
-      this->totalMaxFreq = totalMaxFreq;
+      this->maxFreq = maxFreq;
    }
 
    BlockFrequencyInfo *getBFI(){return BFI;}
    Function *getF(){return this->F;}
-   uint64_t getMaxFreq() { return totalMaxFreq; }
+   uint64_t getMaxFreq() { return maxFreq; }
 };
 
 template <> struct GraphTraits<HeatCFGInfo *> :
@@ -207,7 +208,6 @@ struct DOTGraphTraits<HeatCFGInfo *> : public DefaultDOTGraphTraits {
     return Attrs.str();
   }
 
-  /// Display the raw branch weights from PGO.
   std::string getNodeAttributes(const BasicBlock *Node, HeatCFGInfo *Graph) {
     auto *BFI = Graph->getBFI();
 
@@ -324,10 +324,10 @@ bool HeatCFGOnlyPrinterPass::runOnModule(Module &M) {
 
 char HeatCFGPrinterPass::ID = 0;
 static RegisterPass<HeatCFGPrinterPass> X("dot-heat-cfg",
-                      "Save heat map of CFG as dot files.", false, false);
+                      "Print heat map of CFG of function to 'dot' file", false, false);
 
 char HeatCFGOnlyPrinterPass::ID = 0;
 static RegisterPass<HeatCFGOnlyPrinterPass> XOnly("dot-heat-cfg-only",
-                      "Save heat map of CFG only as dot files.", false, false);
+                      "Print heat map of CFG of function to 'dot' file (with no function bodies)", false, false);
 
 
