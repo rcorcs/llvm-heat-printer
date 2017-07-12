@@ -26,7 +26,7 @@ With the inter-function heat map, the CFGs for some functions can be completely 
 
 In order to generate the heat CFG .dot file, use the following command:
 ```
-opt -load ../build/src/libHeatCFGPrinter.so -dot-heat-cfg  <.bc file> >/dev/null
+$> opt -load ../build/src/libHeatCFGPrinter.so -dot-heat-cfg  <.bc file> >/dev/null
 ```
 
 ## Heat CallGraph Printer
@@ -40,7 +40,7 @@ The following figure illustrates the heat call-graph highlighting the maximum ba
 
 In order to generate the heat call-graph .dot file, use the following command:
 ```
-opt -load ../build/src/libHeatCallPrinter.so -dot-heat-callgraph  <.bc file> >/dev/null
+$> opt -load ../build/src/libHeatCallPrinter.so -dot-heat-callgraph  <.bc file> >/dev/null
 ```
 
 ## Using Profiling
@@ -49,7 +49,7 @@ In order to use profiling information with the heat map visualizations, you firs
 
 Instrumenting the code for profiling basic block frequencies:
 ```
-clang -fprofile-instr-generate ...
+$> clang -fprofile-instr-generate ...
 ```
 
 Execute the instrumented code with a some representative inputs in order to generate profiling information.
@@ -61,6 +61,15 @@ llvm-profdata merge -output=<file.profdata> <list of .profraw files>
 
 In order to annotate the code, re-compile the original code with the profiling information:
 ```
-clang -fprofile-instr-use=<file.profdata> -emit-llvm -c ...
+$> clang -fprofile-instr-use=<file.profdata> -emit-llvm -c ...
 ```
 This last command will generate LLVM bitcode files with the profiling annotations.
+
+## Using Profiling
+
+Assuming that you already have LLVM libraries installed.
+In a build directory, use the following commands for building the LLVM Heat Printer libraries.
+```
+$> cmake <path to LLVM Heat Printer root folder>
+$> make
+```
