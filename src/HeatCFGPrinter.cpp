@@ -44,6 +44,14 @@ static cl::opt<bool>
 HeatCFGPerFunction("heat-cfg-per-function", cl::init(false), cl::Hidden,
                    cl::desc("Heat CFG per function"));
 
+static cl::opt<bool>
+UseRawEdgeWeight("heat-cfg-raw-weight", cl::init(false), cl::Hidden,
+                   cl::desc("Use raw profiling weights"));
+
+static cl::opt<bool>
+NoEdgeWeight("heat-cfg-no-weight", cl::init(false), cl::Hidden,
+                   cl::desc("No edge labels with weights"));
+
 namespace llvm{
 
 class HeatCFGInfo {
@@ -59,9 +67,22 @@ public:
       this->maxFreq = maxFreq;
    }
 
-   BlockFrequencyInfo *getBFI(){return BFI;}
-   Function *getF(){return this->F;}
+   BlockFrequencyInfo *getBFI(){ return BFI; }
+
+   Function *getF(){ return this->F; }
+
    uint64_t getMaxFreq() { return maxFreq; }
+
+   uint64_t getFreq(BasicBlock *BB){
+      uint64_t freqVal = 0;
+      Optional< uint64_t > freq = BFI->getBlockProfileCount(BB);
+      if (freq.hasValue()) {
+         freqVal = freq.getValue();
+      } else {
+         freqVal = BFI->getBlockFreq(BB).getFrequency();
+      }
+      return freqVal;
+   }
 };
 
 template <> struct GraphTraits<HeatCFGInfo *> :
@@ -182,30 +203,51 @@ struct DOTGraphTraits<HeatCFGInfo *> : public DefaultDOTGraphTraits {
   std::string getEdgeAttributes(const BasicBlock *Node, succ_const_iterator I,
                                 HeatCFGInfo *Graph) {
 
+    if (NoEdgeWeight)
+      return "";
+
     const TerminatorInst *TI = Node->getTerminator();
     if (TI->getNumSuccessors() == 1)
       return "";
 
-    MDNode *WeightsNode = TI->getMetadata(LLVMContext::MD_prof);
-    if (!WeightsNode)
-      return "";
+    if (UseRawEdgeWeight) {
+       MDNode *WeightsNode = TI->getMetadata(LLVMContext::MD_prof);
+       if (!WeightsNode)
+         return "";
 
-    MDString *MDName = cast<MDString>(WeightsNode->getOperand(0));
-    if (MDName->getString() != "branch_weights")
-      return "";
+       MDString *MDName = cast<MDString>(WeightsNode->getOperand(0));
+       if (MDName->getString() != "branch_weights")
+         return "";
 
-    unsigned OpNo = I.getSuccessorIndex() + 1;
-    if (OpNo >= WeightsNode->getNumOperands())
-      return "";
-    ConstantInt *Weight =
-        mdconst::dyn_extract<ConstantInt>(WeightsNode->getOperand(OpNo));
-    if (!Weight)
-      return "";
+       unsigned OpNo = I.getSuccessorIndex() + 1;
+       if (OpNo >= WeightsNode->getNumOperands())
+         return "";
+       ConstantInt *Weight =
+           mdconst::dyn_extract<ConstantInt>(WeightsNode->getOperand(OpNo));
+       if (!Weight)
+         return "";
 
-    // Prepend a 'W' to indicate that this is a weight rather than the actual
-    // profile count (due to scaling).
-    Twine Attrs = "label=\"W:" + Twine(Weight->getZExtValue()) + "\"";
-    return Attrs.str();
+       // Prepend a 'W' to indicate that this is a weight rather than the actual
+       // profile count (due to scaling).
+       Twine Attrs = "label=\"W:" + Twine(Weight->getZExtValue()) + "\"";
+       return Attrs.str();
+    } else {
+       uint64_t total = 0;
+       for (unsigned i = 0; i<TI->getNumSuccessors(); i++){
+          total += Graph->getFreq(TI->getSuccessor(i));
+       }
+
+       unsigned OpNo = I.getSuccessorIndex();
+
+       if (OpNo >= TI->getNumSuccessors())
+         return "";
+
+       double val = (int(round((double(Graph->getFreq(TI->getSuccessor(OpNo)))/double(total))*10000)))/100.0;
+       std::stringstream ss;
+       ss << val;
+       Twine Attrs = "label=\"" + Twine(ss.str()) + "%\"";
+       return Attrs.str();
+    }
   }
 
   std::string getNodeAttributes(const BasicBlock *Node, HeatCFGInfo *Graph) {
@@ -216,9 +258,9 @@ struct DOTGraphTraits<HeatCFGInfo *> : public DefaultDOTGraphTraits {
 
     uint64_t freqVal = 0;
     Optional< uint64_t > freq = BFI->getBlockProfileCount(Node);
-    if(freq.hasValue()){
+    if (freq.hasValue()) {
        freqVal = freq.getValue();
-    }else {
+    } else {
        freqVal = BFI->getBlockFreq(Node).getFrequency();
     }
     
@@ -241,12 +283,13 @@ static uint64_t getMaxFreq(Function &F, function_ref<BlockFrequencyInfo *(Functi
   for(BasicBlock &BB : F){
      uint64_t freqVal = 0;
      Optional< uint64_t > freq = BFI->getBlockProfileCount(&BB);
-     if(freq.hasValue()){
+     if (freq.hasValue()) {
         freqVal = freq.getValue();
-     }else {
+     } else {
         freqVal = BFI->getBlockFreq(&BB).getFrequency();
      }
-     if(freqVal>=maxFreq) maxFreq = freqVal;
+     if (freqVal>=maxFreq)
+        maxFreq = freqVal;
   }
   return maxFreq;
 }
@@ -254,11 +297,12 @@ static uint64_t getMaxFreq(Function &F, function_ref<BlockFrequencyInfo *(Functi
 
 static uint64_t getMaxFreq(Module &M, function_ref<BlockFrequencyInfo *(Function &)> LookupBFI){
   uint64_t maxFreq = 0;
-  for(Function &F : M){
-    if(F.isDeclaration())
+  for (Function &F : M) {
+    if (F.isDeclaration())
       continue;
     uint64_t localMaxFreq = getMaxFreq(F,LookupBFI);
-    if(localMaxFreq>=maxFreq) maxFreq = localMaxFreq;
+    if (localMaxFreq>=maxFreq)
+       maxFreq = localMaxFreq;
   }
   return maxFreq;
 }
@@ -272,7 +316,7 @@ static void writeHeatCFGToDotFile(Function &F, BlockFrequencyInfo *BFI, uint64_t
 
   HeatCFGInfo heatCFGInfo(&F,BFI,maxFreq);
 
-  if(!EC)
+  if (!EC)
      WriteGraph(File, &heatCFGInfo, isSimple);
   else
      errs() << "  error opening file for writing!";
@@ -281,11 +325,13 @@ static void writeHeatCFGToDotFile(Function &F, BlockFrequencyInfo *BFI, uint64_t
 
 static void writeHeatCFGToDotFile(Module &M, function_ref<BlockFrequencyInfo *(Function &)> LookupBFI, bool isSimple){
   uint64_t maxFreq = 0;
-  if(!HeatCFGPerFunction) maxFreq = getMaxFreq(M,LookupBFI);
-  for(Function &F : M){
-    if(F.isDeclaration())
+  if (!HeatCFGPerFunction)
+     maxFreq = getMaxFreq(M,LookupBFI);
+  for (Function &F : M) {
+    if (F.isDeclaration())
       continue;
-    if(HeatCFGPerFunction) maxFreq = getMaxFreq(F,LookupBFI);
+    if (HeatCFGPerFunction)
+       maxFreq = getMaxFreq(F,LookupBFI);
     writeHeatCFGToDotFile(F,LookupBFI(F),maxFreq,isSimple);
   }
 }
