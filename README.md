@@ -8,7 +8,7 @@ Cool/Warm color map:
 
 LLVM Heat Printer supports profiling annotation.
 In order to see how to use profiling information, look at Section [Using Profiling].
-
+If no profiling is used, the basic block frequencies are estimated by means of heuristics.
 ## Heat CFG Printer
 
 The analysis pass '-dot-heat-cfg' generates the heat map of the CFG (control-flow graph) based on the basic block frequency.
