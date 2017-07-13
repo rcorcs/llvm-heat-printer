@@ -9,6 +9,16 @@ Cool/Warm color map:
 LLVM Heat Printer supports profiling annotation.
 In order to see how to use profiling information, look at Section [Using Profiling].
 If no profiling is used, the basic block frequencies are estimated by means of heuristics.
+
+## Build
+
+Assuming that you already have LLVM libraries installed.
+In a build directory, use the following commands for building the LLVM Heat Printer libraries.
+```
+$> cmake <path to LLVM Heat Printer root folder>
+$> make
+```
+
 ## Heat CFG Printer
 
 The analysis pass '-dot-heat-cfg' generates the heat map of the CFG (control-flow graph) based on the basic block frequency.
@@ -65,11 +75,3 @@ $> clang -fprofile-instr-use=<file.profdata> -emit-llvm -c ...
 ```
 This last command will generate LLVM bitcode files with the profiling annotations.
 
-## Using Profiling
-
-Assuming that you already have LLVM libraries installed.
-In a build directory, use the following commands for building the LLVM Heat Printer libraries.
-```
-$> cmake <path to LLVM Heat Printer root folder>
-$> make
-```
