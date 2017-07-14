@@ -242,10 +242,16 @@ struct DOTGraphTraits<HeatCFGInfo *> : public DefaultDOTGraphTraits {
          return "";
 
        BasicBlock *SuccBB = TI->getSuccessor(OpNo);
-       double val = (int(round((double(Graph->getFreq(SuccBB))/double(total))*
-                               10000)))/100.0;
+
+       double val = 0.0;
+       if (Graph->getFreq(SuccBB)>0) {
+         double freq = Graph->getFreq(SuccBB);
+         val = (int(round((freq/double(total))*10000)))/100.0;
+       }
+
        std::stringstream ss;
-       ss << val;
+       ss.precision(2);
+       ss << std::fixed << val;
        Attrs = "label=\"" + ss.str() + "%\"";
     }
     return Attrs;
