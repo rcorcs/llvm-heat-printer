@@ -50,12 +50,12 @@ EstimateEdgeWeight("heat-callgraph-estimate-weight", cl::init(false),
                    cl::Hidden, cl::desc("Estimate edge weights"));
 
 static cl::opt<bool>
-SimplifyCallGraph("heat-callgraph-simplify", cl::init(false), cl::Hidden,
-                   cl::desc("Simplify call graph"));
+FullCallGraph("heat-callgraph-full", cl::init(false), cl::Hidden,
+                   cl::desc("Print full call-graph (using external nodes)"));
 
 static cl::opt<bool>
 UseCallCounter("heat-callgraph-call-count", cl::init(false), cl::Hidden,
-                   cl::desc("Simplify call graph"));
+                   cl::desc("Use function's call counter as a heat metric"));
 
 
 namespace llvm{
@@ -166,7 +166,7 @@ struct DOTGraphTraits<HeatCallGraphInfo *> : public DefaultDOTGraphTraits {
   }
 
   static bool isNodeHidden(const CallGraphNode *Node) {
-    if (!SimplifyCallGraph)
+    if (FullCallGraph)
        return false;
 
     if (Node->getFunction())
