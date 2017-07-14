@@ -1,4 +1,4 @@
-//===-- CFGPrinter.h - CFG printer external interface -----------*- C++ -*-===//
+//===-- HeatCFGPrinter.cpp - CFG printer external interface -----*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -18,6 +18,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "HeatCFGPrinter.h"
+#include "HeatUtils.h"
 
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/Analysis/BranchProbabilityInfo.h"
@@ -74,14 +75,7 @@ public:
    uint64_t getMaxFreq() { return maxFreq; }
 
    uint64_t getFreq(BasicBlock *BB){
-      uint64_t freqVal = 0;
-      Optional< uint64_t > freq = BFI->getBlockProfileCount(BB);
-      if (freq.hasValue()) {
-         freqVal = freq.getValue();
-      } else {
-         freqVal = BFI->getBlockFreq(BB).getFrequency();
-      }
-      return freqVal;
+      return getBlockFreq(BB,BFI);
    }
 };
 
@@ -210,6 +204,8 @@ struct DOTGraphTraits<HeatCFGInfo *> : public DefaultDOTGraphTraits {
     if (TI->getNumSuccessors() == 1)
       return "";
 
+    std::string Attrs = "";
+
     if (UseRawEdgeWeight) {
        MDNode *WeightsNode = TI->getMetadata(LLVMContext::MD_prof);
        if (!WeightsNode)
@@ -229,8 +225,7 @@ struct DOTGraphTraits<HeatCFGInfo *> : public DefaultDOTGraphTraits {
 
        // Prepend a 'W' to indicate that this is a weight rather than the actual
        // profile count (due to scaling).
-       Twine Attrs = "label=\"W:" + Twine(Weight->getZExtValue()) + "\"";
-       return Attrs.str();
+       Attrs = "label=\"W:" + std::to_string(Weight->getZExtValue()) + "\"";
     } else {
        uint64_t total = 0;
        for (unsigned i = 0; i<TI->getNumSuccessors(); i++){
@@ -245,28 +240,17 @@ struct DOTGraphTraits<HeatCFGInfo *> : public DefaultDOTGraphTraits {
        double val = (int(round((double(Graph->getFreq(TI->getSuccessor(OpNo)))/double(total))*10000)))/100.0;
        std::stringstream ss;
        ss << val;
-       Twine Attrs = "label=\"" + Twine(ss.str()) + "%\"";
-       return Attrs.str();
+       Attrs = "label=\"" + ss.str() + "%\"";
     }
+    return Attrs;
   }
 
   std::string getNodeAttributes(const BasicBlock *Node, HeatCFGInfo *Graph) {
     auto *BFI = Graph->getBFI();
 
-    static const unsigned heatSize = 100;
-    static std::string heatPalette[100] = {"#3d50c3", "#4055c8", "#4358cb", "#465ecf", "#4961d2", "#4c66d6", "#4f69d9", "#536edd", "#5572df", "#5977e3", "#5b7ae5", "#5f7fe8", "#6282ea", "#6687ed", "#6a8bef", "#6c8ff1", "#7093f3", "#7396f5", "#779af7", "#7a9df8", "#7ea1fa", "#81a4fb", "#85a8fc", "#88abfd", "#8caffe", "#8fb1fe", "#93b5fe", "#96b7ff", "#9abbff", "#9ebeff", "#a1c0ff", "#a5c3fe", "#a7c5fe", "#abc8fd", "#aec9fc", "#b2ccfb", "#b5cdfa", "#b9d0f9", "#bbd1f8", "#bfd3f6", "#c1d4f4", "#c5d6f2", "#c7d7f0", "#cbd8ee", "#cedaeb", "#d1dae9", "#d4dbe6", "#d6dce4", "#d9dce1", "#dbdcde", "#dedcdb", "#e0dbd8", "#e3d9d3", "#e5d8d1", "#e8d6cc", "#ead5c9", "#ecd3c5", "#eed0c0", "#efcebd", "#f1ccb8", "#f2cab5", "#f3c7b1", "#f4c5ad", "#f5c1a9", "#f6bfa6", "#f7bca1", "#f7b99e", "#f7b599", "#f7b396", "#f7af91", "#f7ac8e", "#f7a889", "#f6a385", "#f5a081", "#f59c7d", "#f4987a", "#f39475", "#f29072", "#f08b6e", "#ef886b", "#ed8366", "#ec7f63", "#e97a5f", "#e8765c", "#e57058", "#e36c55", "#e16751", "#de614d", "#dc5d4a", "#d85646", "#d65244", "#d24b40", "#d0473d", "#cc403a", "#ca3b37", "#c53334", "#c32e31", "#be242e", "#bb1b2c", "#b70d28"};
-
-    uint64_t freqVal = 0;
-    Optional< uint64_t > freq = BFI->getBlockProfileCount(Node);
-    if (freq.hasValue()) {
-       freqVal = freq.getValue();
-    } else {
-       freqVal = BFI->getBlockFreq(Node).getFrequency();
-    }
-    
-    unsigned colorId = unsigned((double(freqVal)/Graph->getMaxFreq())*(heatSize-1));
-    std::string color = heatPalette[unsigned((double(freqVal)/Graph->getMaxFreq())*(heatSize-1))];
-    std::string edgeColor = ((colorId<(heatSize/2))?heatPalette[0]:heatPalette[heatSize-1]);
+    uint64_t freq = getBlockFreq(Node, BFI);    
+    std::string color = getHeatColor(freq, Graph->getMaxFreq());
+    std::string edgeColor = (freq<(Graph->getMaxFreq()/2))?(getHeatColor(0)):(getHeatColor(1));
 
     std::string attrs = "color=\"" + edgeColor + "ff\", style=filled, fillcolor=\"" + color + "80\"";
 
@@ -276,36 +260,6 @@ struct DOTGraphTraits<HeatCFGInfo *> : public DefaultDOTGraphTraits {
 
 }
 
-
-static uint64_t getMaxFreq(Function &F, function_ref<BlockFrequencyInfo *(Function &)> LookupBFI){
-  uint64_t maxFreq = 0;
-  auto *BFI = LookupBFI(F);
-  for(BasicBlock &BB : F){
-     uint64_t freqVal = 0;
-     Optional< uint64_t > freq = BFI->getBlockProfileCount(&BB);
-     if (freq.hasValue()) {
-        freqVal = freq.getValue();
-     } else {
-        freqVal = BFI->getBlockFreq(&BB).getFrequency();
-     }
-     if (freqVal>=maxFreq)
-        maxFreq = freqVal;
-  }
-  return maxFreq;
-}
-
-
-static uint64_t getMaxFreq(Module &M, function_ref<BlockFrequencyInfo *(Function &)> LookupBFI){
-  uint64_t maxFreq = 0;
-  for (Function &F : M) {
-    if (F.isDeclaration())
-      continue;
-    uint64_t localMaxFreq = getMaxFreq(F,LookupBFI);
-    if (localMaxFreq>=maxFreq)
-       maxFreq = localMaxFreq;
-  }
-  return maxFreq;
-}
 
 static void writeHeatCFGToDotFile(Function &F, BlockFrequencyInfo *BFI, uint64_t maxFreq, bool isSimple) {
   std::string Filename = ("heatcfg." + F.getName() + ".dot").str();
@@ -331,7 +285,7 @@ static void writeHeatCFGToDotFile(Module &M, function_ref<BlockFrequencyInfo *(F
     if (F.isDeclaration())
       continue;
     if (HeatCFGPerFunction)
-       maxFreq = getMaxFreq(F,LookupBFI);
+       maxFreq = getMaxFreq(F,LookupBFI(F));
     writeHeatCFGToDotFile(F,LookupBFI(F),maxFreq,isSimple);
   }
 }
