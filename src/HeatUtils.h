@@ -24,11 +24,21 @@ using namespace llvm;
 
 namespace llvm {
 
-uint64_t getBlockFreq(const BasicBlock *BB, BlockFrequencyInfo *BFI);
+bool hasProfiling(Module &M);
 
-uint64_t getMaxFreq(Function &F, BlockFrequencyInfo *BFI);
+uint64_t getBlockFreq(const BasicBlock *BB, BlockFrequencyInfo *BFI,
+                      bool useHeuristic=true);
 
-uint64_t getMaxFreq(Module &M, function_ref<BlockFrequencyInfo *(Function &)> LookupBFI);
+uint64_t getNumOfCalls(Function &callerFunction, Function &calledFunction,
+                       function_ref<BlockFrequencyInfo *(Function &)> LookupBFI,
+                       bool useHeuristic=true);
+
+uint64_t getMaxFreq(Function &F, BlockFrequencyInfo *BFI,
+                    bool useHeuristic=true);
+
+uint64_t getMaxFreq(Module &M,
+                    function_ref<BlockFrequencyInfo *(Function &)> LookupBFI,
+                    bool useHeuristic=true);
 
 std::string getHeatColor(uint64_t freq, uint64_t maxFreq);
 

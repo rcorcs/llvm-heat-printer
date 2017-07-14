@@ -60,12 +60,14 @@ private:
    BlockFrequencyInfo *BFI;
    Function *F;
    uint64_t maxFreq;
-
+   bool useHeuristic;
 public:
-   HeatCFGInfo(Function *F, BlockFrequencyInfo *BFI, uint64_t maxFreq){
+   HeatCFGInfo(Function *F, BlockFrequencyInfo *BFI, uint64_t maxFreq,
+               bool useHeuristic){
       this->BFI = BFI;
       this->F = F;
       this->maxFreq = maxFreq;
+      this->useHeuristic = useHeuristic;
    }
 
    BlockFrequencyInfo *getBFI(){ return BFI; }
@@ -74,14 +76,16 @@ public:
 
    uint64_t getMaxFreq() { return maxFreq; }
 
-   uint64_t getFreq(BasicBlock *BB){
-      return getBlockFreq(BB,BFI);
+   uint64_t getFreq(const BasicBlock *BB){
+      return getBlockFreq(BB,BFI,useHeuristic);
    }
 };
 
 template <> struct GraphTraits<HeatCFGInfo *> :
   public GraphTraits<const BasicBlock*> {
-  static NodeRef getEntryNode(HeatCFGInfo *heatCFG) { return &(heatCFG->getF()->getEntryBlock()); }
+  static NodeRef getEntryNode(HeatCFGInfo *heatCFG) {
+    return &(heatCFG->getF()->getEntryBlock());
+  }
 
   // nodes_iterator/begin/end - Allow iteration over all nodes in the graph
   using nodes_iterator = pointer_iterator<Function::const_iterator>;
@@ -237,7 +241,9 @@ struct DOTGraphTraits<HeatCFGInfo *> : public DefaultDOTGraphTraits {
        if (OpNo >= TI->getNumSuccessors())
          return "";
 
-       double val = (int(round((double(Graph->getFreq(TI->getSuccessor(OpNo)))/double(total))*10000)))/100.0;
+       BasicBlock *SuccBB = TI->getSuccessor(OpNo);
+       double val = (int(round((double(Graph->getFreq(SuccBB))/double(total))*
+                               10000)))/100.0;
        std::stringstream ss;
        ss << val;
        Attrs = "label=\"" + ss.str() + "%\"";
@@ -246,13 +252,13 @@ struct DOTGraphTraits<HeatCFGInfo *> : public DefaultDOTGraphTraits {
   }
 
   std::string getNodeAttributes(const BasicBlock *Node, HeatCFGInfo *Graph) {
-    auto *BFI = Graph->getBFI();
-
-    uint64_t freq = getBlockFreq(Node, BFI);    
+    uint64_t freq = Graph->getFreq(Node);
     std::string color = getHeatColor(freq, Graph->getMaxFreq());
-    std::string edgeColor = (freq<(Graph->getMaxFreq()/2))?(getHeatColor(0)):(getHeatColor(1));
+    std::string edgeColor = (freq<=(Graph->getMaxFreq()/2))?
+                            (getHeatColor(0)):(getHeatColor(1));
 
-    std::string attrs = "color=\"" + edgeColor + "ff\", style=filled, fillcolor=\"" + color + "80\"";
+    std::string attrs = "color=\"" + edgeColor +
+                        "ff\", style=filled, fillcolor=\"" + color + "80\"";
 
     return attrs;
   }  
@@ -260,15 +266,15 @@ struct DOTGraphTraits<HeatCFGInfo *> : public DefaultDOTGraphTraits {
 
 }
 
-
-static void writeHeatCFGToDotFile(Function &F, BlockFrequencyInfo *BFI, uint64_t maxFreq, bool isSimple) {
+static void writeHeatCFGToDotFile(Function &F, BlockFrequencyInfo *BFI,
+                           uint64_t maxFreq, bool useHeuristic, bool isSimple) {
   std::string Filename = ("heatcfg." + F.getName() + ".dot").str();
   errs() << "Writing '" << Filename << "'...";
 
   std::error_code EC;
   raw_fd_ostream File(Filename, EC, sys::fs::F_Text);
 
-  HeatCFGInfo heatCFGInfo(&F,BFI,maxFreq);
+  HeatCFGInfo heatCFGInfo(&F,BFI,maxFreq,useHeuristic);
 
   if (!EC)
      WriteGraph(File, &heatCFGInfo, isSimple);
@@ -277,16 +283,21 @@ static void writeHeatCFGToDotFile(Function &F, BlockFrequencyInfo *BFI, uint64_t
   errs() << "\n";
 }
 
-static void writeHeatCFGToDotFile(Module &M, function_ref<BlockFrequencyInfo *(Function &)> LookupBFI, bool isSimple){
+static void writeHeatCFGToDotFile(Module &M,
+       function_ref<BlockFrequencyInfo *(Function &)> LookupBFI, bool isSimple){
   uint64_t maxFreq = 0;
+
+  bool useHeuristic = !hasProfiling(M);
+
   if (!HeatCFGPerFunction)
-     maxFreq = getMaxFreq(M,LookupBFI);
+     maxFreq = getMaxFreq(M,LookupBFI,useHeuristic);
+
   for (Function &F : M) {
     if (F.isDeclaration())
       continue;
     if (HeatCFGPerFunction)
-       maxFreq = getMaxFreq(F,LookupBFI(F));
-    writeHeatCFGToDotFile(F,LookupBFI(F),maxFreq,isSimple);
+       maxFreq = getMaxFreq(F,LookupBFI(F),useHeuristic);
+    writeHeatCFGToDotFile(F,LookupBFI(F),maxFreq,useHeuristic,isSimple);
   }
 }
 
@@ -324,10 +335,11 @@ bool HeatCFGOnlyPrinterPass::runOnModule(Module &M) {
 
 char HeatCFGPrinterPass::ID = 0;
 static RegisterPass<HeatCFGPrinterPass> X("dot-heat-cfg",
-                      "Print heat map of CFG of function to 'dot' file", false, false);
+               "Print heat map of CFG of function to 'dot' file", false, false);
 
 char HeatCFGOnlyPrinterPass::ID = 0;
 static RegisterPass<HeatCFGOnlyPrinterPass> XOnly("dot-heat-cfg-only",
-                      "Print heat map of CFG of function to 'dot' file (with no function bodies)", false, false);
+    "Print heat map of CFG of function to 'dot' file (with no function bodies)",
+    false, false);
 
 
