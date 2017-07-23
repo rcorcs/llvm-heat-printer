@@ -15,9 +15,10 @@ If no profiling is used, the basic block frequencies are estimated by means of h
 Assuming that you already have LLVM libraries installed.
 In a build directory, use the following commands for building the LLVM Heat Printer libraries.
 ```
-$> cmake <path to LLVM Heat Printer root folder>
+$> cmake <path to LLVM Heat Printer root directory> [-DLLVM_DIR=<llvm build directory>]
 $> make
 ```
+The argument -DLLVM_DIR is optinal, in case you want to specify a directory that contains a build of LLVM.
 
 ## Heat CFG Printer
 
