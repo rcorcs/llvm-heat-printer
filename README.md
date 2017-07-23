@@ -18,7 +18,7 @@ In a build directory, use the following commands for building the LLVM Heat Prin
 $> cmake <path to LLVM Heat Printer root directory> [-DLLVM_DIR=<llvm build directory>]
 $> make
 ```
-The argument -DLLVM_DIR is optinal, in case you want to specify a directory that contains a build of LLVM.
+The argument -DLLVM_DIR is optional, in case you want to specify a directory that contains a build of LLVM.
 
 ## Heat CFG Printer
 
