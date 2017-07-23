@@ -59,10 +59,14 @@ In order to use profiling information with the heat map visualizations, you firs
 
 Instrumenting the code for profiling basic block frequencies:
 ```
+$> clang -fprofile-generate ...
+```
+or, alternatively, you can use the older profiling implementation:
+```
 $> clang -fprofile-instr-generate ...
 ```
 
-Execute the instrumented code with a some representative inputs in order to generate profiling information.
+In both cases, execute the instrumented code with some representative inputs in order to generate profiling information.
 After each execution a .profraw file will be created.
 Use llvm-profdata to combine all .profraw files:
 ```
@@ -70,6 +74,10 @@ llvm-profdata merge -output=<file.profdata> <list of .profraw files>
 ```
 
 In order to annotate the code, re-compile the original code with the profiling information:
+```
+$> clang -fprofile-use=<file.profdata> -emit-llvm -c ...
+```
+or, again, you can use the older profiling implementation:
 ```
 $> clang -fprofile-instr-use=<file.profdata> -emit-llvm -c ...
 ```
