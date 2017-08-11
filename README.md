@@ -12,7 +12,7 @@ If no profiling is used, the basic block frequencies are estimated by means of h
 
 ## Build
 
-Assuming that you already have LLVM libraries installed.
+Assuming that you already have LLVM libraries installed (LLVM version 5.x.x).
 In a build directory, use the following commands for building the LLVM Heat Printer libraries.
 ```
 $> cmake <path to LLVM Heat Printer root directory> [-DLLVM_DIR=<llvm build directory>]
