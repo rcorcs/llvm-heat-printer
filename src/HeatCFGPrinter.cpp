@@ -25,6 +25,7 @@
 #include "llvm/Analysis/CFGPrinter.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
+#include "llvm/IR/CFG.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/DOTGraphTraits.h"
 #include "llvm/Support/GraphWriter.h"
@@ -176,7 +177,7 @@ struct DOTGraphTraits<HeatCFGInfo *> : public DefaultDOTGraphTraits {
   }
 
   static std::string getEdgeSourceLabel(const BasicBlock *Node,
-                                        succ_const_iterator I) {
+                                        const_succ_iterator I) {
     // Label source of conditional branches with "T" or "F"
     if (const BranchInst *BI = dyn_cast<BranchInst>(Node->getTerminator()))
       if (BI->isConditional())
@@ -198,13 +199,13 @@ struct DOTGraphTraits<HeatCFGInfo *> : public DefaultDOTGraphTraits {
   }
 
   /// Display the raw branch weights from PGO.
-  std::string getEdgeAttributes(const BasicBlock *Node, succ_const_iterator I,
+  std::string getEdgeAttributes(const BasicBlock *Node, const_succ_iterator I,
                                 HeatCFGInfo *Graph) {
 
     if (NoEdgeWeight)
       return "";
 
-    const TerminatorInst *TI = Node->getTerminator();
+    const Instruction *TI = Node->getTerminator();
     if (TI->getNumSuccessors() == 1)
       return "";
 
@@ -278,7 +279,7 @@ static void writeHeatCFGToDotFile(Function &F, BlockFrequencyInfo *BFI,
   errs() << "Writing '" << Filename << "'...";
 
   std::error_code EC;
-  raw_fd_ostream File(Filename, EC, sys::fs::F_Text);
+  raw_fd_ostream File(Filename, EC, sys::fs::OF_Text);
 
   HeatCFGInfo heatCFGInfo(&F,BFI,maxFreq,useHeuristic);
 

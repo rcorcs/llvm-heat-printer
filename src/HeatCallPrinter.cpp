@@ -83,7 +83,7 @@ public:
          continue;
        uint64_t localMaxFreq = 0;
        if (UseCallCounter) {
-         Optional< uint64_t > freq = F.getEntryCount();
+         Optional< uint64_t > freq = F.getEntryCount().getCount();
          if (freq.hasValue())
            localMaxFreq = freq.getValue();       
        } else {
@@ -165,7 +165,7 @@ struct DOTGraphTraits<HeatCallGraphInfo *> : public DefaultDOTGraphTraits {
            std::string(Graph->getModule()->getModuleIdentifier());
   }
 
-  static bool isNodeHidden(const CallGraphNode *Node) {
+  static bool isNodeHidden(const CallGraphNode *Node, const HeatCallGraphInfo *G) {
     if (FullCallGraph)
        return false;
 
@@ -184,7 +184,7 @@ struct DOTGraphTraits<HeatCallGraphInfo *> : public DefaultDOTGraphTraits {
        return "external callee";
 
     if (Function *Func = Node->getFunction())
-      return Func->getName();
+      return Func->getName().str();
 
     return "external node";
   }
@@ -257,7 +257,7 @@ bool HeatCallGraphDOTPrinterPass::runOnModule(Module &M) {
   errs() << "Writing '" << Filename << "'...";
 
   std::error_code EC;
-  raw_fd_ostream File(Filename, EC, sys::fs::F_Text);
+  raw_fd_ostream File(Filename, EC, sys::fs::OF_Text);
 
   CallGraph CG(M);
   HeatCallGraphInfo heatCFGInfo(&M,&CG,LookupBFI);
