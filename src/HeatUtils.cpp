@@ -37,11 +37,12 @@ uint64_t getBlockFreq(const BasicBlock *BB, BlockFrequencyInfo *BFI,
 }
 
 uint64_t getNumOfCalls(Function &callerFunction, Function &calledFunction,
-                      function_ref<BlockFrequencyInfo *(Function &)> LookupBFI){
+                      function_ref<BlockFrequencyInfo *(Function &)> LookupBFI,
+                      bool useHeuristic){
   auto *BFI = LookupBFI(callerFunction);
   uint64_t counter = 0;
   for (BasicBlock &BB : callerFunction) {
-     uint64_t freq = getBlockFreq(&BB,BFI);
+     uint64_t freq = getBlockFreq(&BB,BFI,useHeuristic);
      for (Instruction &I : BB) {
         if (CallInst *Call = dyn_cast<CallInst>(&I)) {
            if (Call->getCalledFunction()==(&calledFunction))
